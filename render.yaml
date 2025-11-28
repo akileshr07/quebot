@@ -1,15 +1,17 @@
 services:
-  - type: worker
-    name: quote-twitter-bot
+  - type: web
+    name: quebot
     env: python
-    region: singapore  # fastest for India
+    region: oregon
     plan: free
     buildCommand: "pip install -r requirements.txt"
-    startCommand: "python main.py"
-    autoDeploy: true
-
+    startCommand: "gunicorn app:app"
     envVars:
-      X_API_KEY: 
+      ADMIN_ID:
+        fromSecret: ADMIN_ID
+      BOT_TOKEN:
+        fromSecret: BOT_TOKEN
+      X_API_KEY:
         fromSecret: X_API_KEY
       X_API_KEY_TW:
         fromSecret: X_API_KEY_TW
@@ -19,7 +21,3 @@ services:
         fromSecret: X_ACCESS_TOKEN
       X_ACCESS_SECRET:
         fromSecret: X_ACCESS_SECRET
-      BOT_TOKEN:
-        fromSecret: BOT_TOKEN
-      ADMIN_ID:
-        fromSecret: ADMIN_ID
