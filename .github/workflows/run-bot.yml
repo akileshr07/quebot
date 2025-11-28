@@ -1,13 +1,13 @@
-name: Run Quote Bot
+name: Run Quote Bot Every Hour
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every hour
+    - cron: "0 * * * *"   # every hour on the hour
 
 jobs:
-  trigger:
+  call-render:
     runs-on: ubuntu-latest
     steps:
-      - name: Call Render Bot
+      - name: Trigger Render Bot Endpoint
         run: |
-          curl -X GET "https://<YOUR_RENDER_URL>/run"
+          curl -X GET "https://quebot-lg0y.onrender.com/run"
