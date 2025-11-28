@@ -1,38 +1,34 @@
-def generate_hashtags(quote):
-    text = quote.lower()
+from .nlp_hashtags import extract_keywords, keywords_to_hashtags
+from .category_hashtags import tags_from_categories
 
-    tags = set()
+def generate_hashtags(quote_text, categories=None, max_total=4):
+    """
+    Returns final hashtags string (space-joined).
+    Strategy:
+      1. Start with 1-2 category tags (most relevant)
+      2. Add up to (max_total - len(category_tags)) tags from NLP keywords
+      3. If none found, fallback to #Quotes #Inspiration
+    """
+    cats = categories or []
+    cat_tags = tags_from_categories(cats, max_tags=2)
 
-    # Keyword → Hashtag mapping  
-    mapping = {
-        "life": ["#Life", "#LifeLessons"],
-        "love": ["#Love", "#LoveQuotes"],
-        "success": ["#Success", "#Motivation"],
-        "motiv": ["#Motivation", "#Inspiration"],
-        "inspir": ["#Inspiration", "#DailyInspiration"],
-        "wisdom": ["#Wisdom", "#Quotes"],
-        "happiness": ["#Happiness", "#PositiveVibes"],
-        "courage": ["#Courage", "#BeBrave"],
-        "faith": ["#Faith"],
-        "truth": ["#Truth"],
-        "time": ["#Time"],
-        "freedom": ["#Freedom"],
-        "fear": ["#OvercomeFear"],
-        "leadership": ["#Leadership"],
-        "nature": ["#NatureQuotes"],
-    }
+    keywords = extract_keywords(quote_text, max_keywords=3)
+    nlp_tags = keywords_to_hashtags(keywords)
 
-    # Detect themes based on keywords
-    for keyword, taglist in mapping.items():
-        if keyword in text:
-            for t in taglist:
-                tags.add(t)
+    final = []
+    # Start with category tags (keeps relevance)
+    for t in cat_tags:
+        if t not in final:
+            final.append(t)
+    # Add NLP tags next
+    for t in nlp_tags:
+        if t not in final:
+            final.append(t)
+        if len(final) >= max_total:
+            break
 
-    # Limit to avoid spam
-    tags = list(tags)[:4]
+    # fallback
+    if not final:
+        final = ["#Quotes", "#Inspiration"]
 
-    # Default backup tags
-    if len(tags) == 0:
-        tags = ["#Quotes", "#Inspiration"]
-
-    return " ".join(tags)
+    return " ".join(final[:max_total])
