@@ -1,22 +1,25 @@
+from utils.hashtagger import generate_hashtags
+
 def format_quote(raw_text):
-    max_len = 260  # keep safe margin below 280
+    max_len = 260
     quote, author = raw_text.split(" — ")
 
-    # Clean + beautify
     quote = quote.strip().strip('"').strip("“").strip("”")
     author = author.strip()
 
-    # Add nice styled quotes
     formatted = f"“{quote}”"
 
-    # Add author if available
     if author and author.lower() != "unknown":
         formatted += f"\n\n— {author}"
 
-    # If tweet exceeds limit, trim elegantly
-    if len(formatted) > max_len:
-        allowed = max_len - len(author) - 5  # space for "…” — A"
+    hashtags = generate_hashtags(quote)
+
+    # Ensure final tweet stays within limit
+    final = f"{formatted}\n\n{hashtags}"
+    if len(final) > 280:
+        allowed = 240 - len(author)
         short = quote[:allowed].rstrip() + "…"
         formatted = f"“{short}”\n\n— {author}"
+        final = f"{formatted}\n\n{hashtags}"
 
-    return formatted
+    return final
