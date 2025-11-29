@@ -1,110 +1,120 @@
 from flask import Flask, jsonify
-import datetime
-import pytz
-
 from main import main as run_bot
 from utils.quote_fetcher import fetch_quote
 from utils.format_quote import format_quote
-from utils.twitter_client import test_twitter, tweet
+from utils.twitter_client import test_twitter
 from utils.dedupe_cache import load_cache
+import datetime
+import pytz
+import os
 
 app = Flask(__name__)
 
 
-# -----------------------------
-# BASIC ENDPOINTS
-# -----------------------------
+# ------------------------------------------------------
+# ROOT ENDPOINT — service alive
+# ------------------------------------------------------
 @app.route("/")
 def home():
     return "Quote Bot is Active!"
 
 
-@app.route("/health")
-def health():
-    return jsonify({"status": "ok"})
-
-
-# -----------------------------
-# RUN BOT (CRON-CALLED ENDPOINT)
-# -----------------------------
+# ------------------------------------------------------
+# RUN ENDPOINT — manual bot execution
+# ------------------------------------------------------
 @app.route("/run")
 def run():
-    """Trigger the scheduled bot run."""
-    run_bot()
-    return "Bot executed successfully."
+    try:
+        run_bot()
+        return "Bot executed successfully."
+    except Exception as e:
+        return f"Bot failed: {str(e)}", 500
 
 
-# -----------------------------
-# FORCE TWEET NOW (MANUAL TEST)
-# -----------------------------
-@app.route("/force_tweet")
-def force_tweet():
-    """Force a tweet immediately for testing."""
-    q = fetch_quote()
-    if not q:
-        return jsonify({"ok": False, "error": "Quote fetch failed."}), 500
-
-    formatted = format_quote(q)
-
-    if not tweet(formatted):
-        return jsonify({"ok": False, "error": "Twitter post failed."}), 500
-
-    return jsonify({
-        "ok": True,
-        "tweet": formatted
-    })
-
-
-# -----------------------------
-# FULL DEBUG ENDPOINT
-# -----------------------------
+# ------------------------------------------------------
+# DEBUG ENDPOINT — FULL DIAGNOSTICS
+# ------------------------------------------------------
 @app.route("/debug")
 def debug():
-    """Return full diagnostic information for debugging."""
+    """Deep diagnostics: API keys, quote API, formatting,
+    dedupe status, and FULL Twitter diagnostics including:
+    - auth_ok
+    - write_ok
+    - account details
+    - raw error message
+    - error type
+    """
 
-    # Time calculations
+    # Time info
     utc_now = datetime.datetime.utcnow()
     ist = pytz.timezone("Asia/Kolkata")
     ist_now = utc_now.replace(tzinfo=pytz.utc).astimezone(ist)
 
-    # Quote API
-    q = fetch_quote()
-    formatted = format_quote(q) if q else None
+    # Fetch quote for debug
+    quote = fetch_quote()
+    formatted = format_quote(quote) if quote else None
 
-    # Twitter detailed check
-    twitter_check = test_twitter()
+    # Run full twitter diagnostic
+    twitter_status = test_twitter()
 
-    # Compile full diagnostic data
-    return jsonify({
+    # Build debug info
+    data = {
         "utc_time": utc_now.strftime("%Y-%m-%d %H:%M:%S"),
         "ist_time": ist_now.strftime("%Y-%m-%d %H:%M:%S"),
 
-        # Environment validation
-        "env": {
-            "ADMIN_ID": "OK",
-            "BOT_TOKEN": "OK",
-            "X_API_KEY": "OK",
-            "X_API_KEY_TW": "OK",
-            "X_API_SECRET": "OK",
-            "X_ACCESS_TOKEN": "OK",
-            "X_ACCESS_SECRET": "OK"
+        # ENV PRESENT CHECK
+        "env_loaded": {
+            "ADMIN_ID": "OK" if os.getenv("ADMIN_ID") else "MISSING",
+            "BOT_TOKEN": "OK" if os.getenv("BOT_TOKEN") else "MISSING",
+            "X_API_KEY": "OK" if os.getenv("X_API_KEY") else "MISSING",
+            "X_API_KEY_TW": "OK" if os.getenv("X_API_KEY_TW") else "MISSING",
+            "X_API_SECRET": "OK" if os.getenv("X_API_SECRET") else "MISSING",
+            "X_ACCESS_TOKEN": "OK" if os.getenv("X_ACCESS_TOKEN") else "MISSING",
+            "X_ACCESS_SECRET": "OK" if os.getenv("X_ACCESS_SECRET") else "MISSING"
         },
 
         # Quote API
-        "quote_api": "OK" if q else "FAILED",
-        "raw_quote": q,
+        "quote_api": "OK" if quote else "FAILED",
+        "raw_quote": quote,
         "formatted_quote": formatted,
 
-        # Twitter Debug
-        "twitter_debug": twitter_check,
+        # Cache info
+        "dedupe_cache": f"{len(load_cache())} items",
 
-        # Cached dedupe
-        "dedupe_cache": f"{len(load_cache())} items"
-    })
+        # FULL Twitter diagnostics
+        "twitter_debug": twitter_status
+    }
+
+    return jsonify(data)
 
 
-# -----------------------------
-# RENDER ENTRY POINT
-# -----------------------------
+# ------------------------------------------------------
+# FORCE POST ENDPOINT — bypass time restriction
+# ------------------------------------------------------
+@app.route("/force_tweet")
+def force_tweet():
+    """Posts a real quote immediately — no hour restrictions.
+    Useful for live testing Tweet posting."""
+    try:
+        q = fetch_quote()
+        if not q:
+            return "Failed to fetch quote.", 500
+
+        formatted = format_quote(q)
+
+        from utils.twitter_client import tweet
+        ok = tweet(formatted)
+
+        if ok:
+            return "Tweet posted successfully."
+        return "Tweet failed to post.", 500
+
+    except Exception as e:
+        return f"Force tweet error: {str(e)}", 500
+
+
+# ------------------------------------------------------
+# MAIN SERVER START
+# ------------------------------------------------------
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
