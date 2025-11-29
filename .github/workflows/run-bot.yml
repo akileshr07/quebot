@@ -2,13 +2,25 @@ name: Trigger Quote Bot
 
 on:
   schedule:
-    - cron: "0 * * * *"   # every hour
+    # Run 10 minutes BEFORE every hour between 6 AM and 9 PM IST
+    # IST = UTC + 5:30
+    # 06:00 IST = 00:30 UTC  → wake at 00:20
+    # 07:00 IST = 01:30 UTC  → wake at 01:20
+    # 08:00 IST = 02:30 UTC  → wake at 02:20
+    # ...
+    # 21:00 IST = 15:30 UTC  → wake at 15:20
+    - cron: "20 0-15 * * *"   # wake instance 10 mins early
+
   workflow_dispatch:
 
 jobs:
   call-render:
     runs-on: ubuntu-latest
     steps:
-      - name: Call /run endpoint
+      - name: Wake Render Instance (avoid cold start)
+        run: |
+          curl -s "https://quebot-lg0y.onrender.com/"
+
+      - name: Call /run endpoint to post tweet
         run: |
           curl -s "https://quebot-lg0y.onrender.com/run"
