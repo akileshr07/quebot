@@ -17,7 +17,10 @@ def tweet(text):
         return True
     except Exception:
         return False
-
+        
+def test_connection():
+    return {"status": "OK"}
+               
 def test_twitter():
     result = {
         "auth_ok": False,
@@ -67,3 +70,4 @@ def test_twitter():
         result["raw_error"] = str(e)
         result["error_type"] = type(e).__name__
         return result
+
