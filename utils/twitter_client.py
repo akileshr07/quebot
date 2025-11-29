@@ -1,6 +1,7 @@
 import tweepy
 import os
 import time
+import sys
 
 def tweet(text):
     consumer_key = os.getenv("X_API_KEY_TW")
@@ -8,7 +9,9 @@ def tweet(text):
     access_token = os.getenv("X_ACCESS_TOKEN")
     access_secret = os.getenv("X_ACCESS_SECRET")
 
-    # FULL VERBOSE AUTH CHECK
+    print("TWITTER DEBUG: starting auth...", flush=True)
+
+    # AUTH CHECK
     try:
         auth = tweepy.OAuth1UserHandler(
             consumer_key,
@@ -18,21 +21,23 @@ def tweet(text):
         )
         api = tweepy.API(auth)
 
-        # Check credentials
+        print("TWITTER DEBUG: calling verify_credentials()", flush=True)
         api.verify_credentials()
+        print("TWITTER DEBUG: credentials OK", flush=True)
+
     except Exception as e:
-        print("AUTH ERROR:", str(e))
+        print("AUTH ERROR:", str(e), flush=True)
         return False
 
-    # Try posting
+    # POST TWEET
     for attempt in range(3):
         try:
+            print(f"TWITTER DEBUG: posting attempt {attempt+1}", flush=True)
             api.update_status(text)
+            print("TWITTER DEBUG: POST SUCCESS", flush=True)
             return True
         except Exception as e:
-            print("POST ERROR:", str(e))
-            if "429" in str(e) or "rate limit" in str(e).lower():
-                time.sleep(60)
-            else:
-                time.sleep(2)
+            print("POST ERROR:", str(e), flush=True)
+            time.sleep(2)
+
     return False
