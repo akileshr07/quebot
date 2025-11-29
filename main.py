@@ -1,22 +1,32 @@
+import datetime
 from utils.quote_fetcher import fetch_quote
+from utils.twitter_client import tweet
+from utils.telegram_logger import log_telegram
 from utils.format_quote import format_quote
-from utils.twitter_client import post_tweet
-from utils.dedupe_cache import is_duplicate, add_to_cache
+from utils.dedupe_cache import not_used_before
 
 def main():
+    current_hour = datetime.datetime.now().hour
+    if not (6 <= current_hour <= 21):
+        return
+
     q = fetch_quote()
     if not q:
-        return {"success": False, "error": "Quote API failure"}
-
-    if is_duplicate(q["quote"]):
-        return {"success": False, "error": "Duplicate quote skipped"}
+        log_telegram("Quote bot: Failed to fetch a new quote after retries.")
+        return
 
     formatted = format_quote(q)
+    if not formatted:
+        log_telegram("Quote bot: Formatting failed.")
+        return
 
-    posted = post_tweet(formatted)
+    # NEW DEDUPE CHECK
+    if not not_used_before(formatted):
+        log_telegram("Duplicate quote skipped.")
+        return
 
+    posted = tweet(formatted)
     if posted:
-        add_to_cache(q["quote"])
-        return {"success": True, "tweet": formatted}
+        log_telegram(f"Tweet posted successfully:\n\n{formatted}")
     else:
-        return {"success": False, "error": "Tweet failed"}
+        log_telegram("Quote bot: Tweet failed after retries.")
