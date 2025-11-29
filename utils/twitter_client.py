@@ -1,7 +1,18 @@
-import os
 import tweepy
+import os
 
-def get_client():
+def get_v1_client():
+    """v1.1 client for posting tweets (FREE)."""
+    auth = tweepy.OAuth1UserHandler(
+        os.getenv("X_API_KEY_TW"),
+        os.getenv("X_API_SECRET"),
+        os.getenv("X_ACCESS_TOKEN"),
+        os.getenv("X_ACCESS_SECRET")
+    )
+    return tweepy.API(auth)
+
+def get_v2_client():
+    """v2 client for reading and account info (FREE)."""
     return tweepy.Client(
         consumer_key=os.getenv("X_API_KEY_TW"),
         consumer_secret=os.getenv("X_API_SECRET"),
@@ -9,63 +20,45 @@ def get_client():
         access_token_secret=os.getenv("X_ACCESS_SECRET")
     )
 
-def tweet(text):
-    try:
-        client = get_client()
-        response = client.create_tweet(text=text)
-        return {
-            "ok": True,
-            "tweet_id": response.data["id"],
-            "text": text
-        }
-    except Exception as e:
-        return {
-            "ok": False,
-            "error": str(e),
-            "error_type": type(e).__name__
-        }
-
-def test_twitter():
+def test_connection():
     result = {
         "auth_ok": False,
         "write_ok": False,
         "account": None,
-        "raw_error": None,
-        "error_type": None
+        "error": None
     }
 
     try:
-        client = get_client()
+        api = get_v1_client()
+        me = api.verify_credentials()
 
-        # Auth Test — Get own account info (v2)
-        try:
-            me = client.get_me()
-            if me.data:
-                result["auth_ok"] = True
-                result["account"] = {
-                    "id": me.data.id,
-                    "name": me.data.name,
-                    "username": me.data.username
-                }
-        except Exception as e:
-            result["raw_error"] = str(e)
-            result["error_type"] = type(e).__name__
-            return result
+        if me:
+            result["auth_ok"] = True
+            result["account"] = {
+                "id": me.id_str,
+                "username": me.screen_name,
+                "name": me.name
+            }
 
-        # Write Test — Post then delete tweet
+        # Write test
         try:
-            tw = client.create_tweet(text="🔍 Twitter API v2 Test (auto-delete)")
+            status = api.update_status("🔍 Tweet test (auto delete)")
+            api.destroy_status(status.id)
             result["write_ok"] = True
-            client.delete_tweet(tw.data["id"])
         except Exception as e:
-            result["write_ok"] = False
-            result["raw_error"] = str(e)
-            result["error_type"] = type(e).__name__
-            return result
-
-        return result
+            result["error"] = str(e)
 
     except Exception as e:
-        result["raw_error"] = str(e)
-        result["error_type"] = type(e).__name__
-        return result
+        result["error"] = str(e)
+
+    return result
+
+
+def post_tweet(text):
+    """POST tweet using v1.1 (works in free plan)."""
+    try:
+        api = get_v1_client()
+        api.update_status(text)
+        return True
+    except Exception:
+        return False
