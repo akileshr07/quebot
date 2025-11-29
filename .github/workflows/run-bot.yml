@@ -2,20 +2,14 @@ name: Trigger Quote Bot
 
 on:
   schedule:
-    # Run 10 minutes BEFORE every hour between 6 AM and 9 PM IST
-    # IST = UTC + 5:30
-    # 06:00 IST = 00:30 UTC  → wake at 00:20
-    # 07:00 IST = 01:30 UTC  → wake at 01:20
-    # 08:00 IST = 02:30 UTC  → wake at 02:20
-    # ...
-    # 21:00 IST = 15:30 UTC  → wake at 15:20
-    - cron: "20 0-15 * * *"   # wake instance 10 mins early
-
+    # Wake Render 10 minutes before each posting hour (6 AM–9 PM IST)
+    - cron: "20 0-15 * * *"
   workflow_dispatch:
 
 jobs:
   call-render:
     runs-on: ubuntu-latest
+
     steps:
       - name: Wake Render Instance (avoid cold start)
         run: |
