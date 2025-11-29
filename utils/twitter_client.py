@@ -12,8 +12,9 @@ def get_client_v2():
 def tweet(text):
     try:
         client = get_client_v2()
-        client.create_tweet(text=text)
+        client.create_tweet(text="🔍 Twitter Bot Write Test (auto-delete)")
         return True
     except Exception as e:
         print("ERROR:", e)
         return False
+
