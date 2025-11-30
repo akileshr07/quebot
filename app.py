@@ -14,7 +14,9 @@ def home():
 
 @app.route("/run")
 def run():
-    return jsonify(run_bot())
+    result = run_bot()
+    return jsonify(result)
+
 
 @app.route("/debug")
 def debug():
