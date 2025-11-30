@@ -2,11 +2,10 @@ name: Trigger Quote Bot
 
 on:
   schedule:
-    # Every hour from 6 AM–9 PM IST (10 minutes earlier)
-    # IST = UTC +5:30
-    # Bot run times (6–21) → Wake times (5:20–20:20 UTC)
+    # Run 10 minutes before every hour from 6 AM–9 PM IST
+    # IST = UTC +5:30 → Wake at 5:20–20:20 UTC
     - cron: "20 5-20 * * *"
-  
+
   workflow_dispatch:
 
 jobs:
@@ -15,25 +14,29 @@ jobs:
     timeout-minutes: 10
 
     steps:
-      - name: Wake Render (retry 5 times)
+
+      # 1. Wake Render instance with retry
+      - name: Wake Render (retry up to 5 times)
         run: |
           for i in {1..5}; do
-            echo "Waking Render... attempt $i"
-            curl -s --max-time 20 "https://quebot-lg0y.onrender.com/" && break
-            echo "Retrying in 5 seconds..."
+            echo "Waking Render (attempt $i)..."
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "https://quebot-lg0y.onrender.com/")
+            if [ "$STATUS" = "200" ]; then
+              echo "Render awake!"
+              break
+            fi
+            echo "Failed (HTTP $STATUS). Retrying in 5 seconds..."
             sleep 5
           done
 
-      - name: Wait for Render to warm up (120 seconds)
+      # 2. Wait for cold start to finish
+      - name: Wait for Render cold start (2 minutes)
         run: |
-          echo "Waiting 2 minutes for Render cold start..."
+          echo "Waiting 120 seconds for Render to warm up..."
           sleep 120
 
-      - name: Trigger /run endpoint (retry 5 times)
+      # 3. Call /run endpoint ONCE ONLY (NO RETRIES → avoids duplicate tweets)
+      - name: Call /run endpoint (one-time execution)
         run: |
-          for i in {1..5}; do
-            echo "Calling /run ... attempt $i"
-            curl -s --max-time 25 "https://quebot-lg0y.onrender.com/run" && break
-            echo "Retrying in 6 seconds..."
-            sleep 6
-          done
+          echo "Triggering tweet..."
+          curl -s "https://quebot-lg0y.onrender.com/run"
