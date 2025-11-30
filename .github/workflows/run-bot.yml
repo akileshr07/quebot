@@ -2,19 +2,38 @@ name: Trigger Quote Bot
 
 on:
   schedule:
-    # Wake Render 10 minutes before each posting hour (6 AM–9 PM IST)
-    - cron: "20 0-15 * * *"
+    # Every hour from 6 AM–9 PM IST (10 minutes earlier)
+    # IST = UTC +5:30
+    # Bot run times (6–21) → Wake times (5:20–20:20 UTC)
+    - cron: "20 5-20 * * *"
+  
   workflow_dispatch:
 
 jobs:
   call-render:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
-      - name: Wake Render Instance (avoid cold start)
+      - name: Wake Render (retry 5 times)
         run: |
-          curl -s "https://quebot-lg0y.onrender.com/"
+          for i in {1..5}; do
+            echo "Waking Render... attempt $i"
+            curl -s --max-time 20 "https://quebot-lg0y.onrender.com/" && break
+            echo "Retrying in 5 seconds..."
+            sleep 5
+          done
 
-      - name: Call /run endpoint to post tweet
+      - name: Wait for Render to warm up (120 seconds)
         run: |
-          curl -s "https://quebot-lg0y.onrender.com/run"
+          echo "Waiting 2 minutes for Render cold start..."
+          sleep 120
+
+      - name: Trigger /run endpoint (retry 5 times)
+        run: |
+          for i in {1..5}; do
+            echo "Calling /run ... attempt $i"
+            curl -s --max-time 25 "https://quebot-lg0y.onrender.com/run" && break
+            echo "Retrying in 6 seconds..."
+            sleep 6
+          done
