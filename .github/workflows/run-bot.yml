@@ -2,10 +2,9 @@ name: Trigger Quote Bot
 
 on:
   schedule:
-    # Run 10 minutes before every hour from 6 AM–9 PM IST
-    # IST = UTC +5:30 → Wake at 5:20–20:20 UTC
-    - cron: "20 5-20 * * *"
-
+    # Wake Render 10 minutes before every hour from 6 AM–9 PM IST
+    # IST = UTC +5:30 → correct wake range = 00:20–15:20 UTC
+    - cron: "20 0-15 * * *"
   workflow_dispatch:
 
 jobs:
@@ -15,7 +14,6 @@ jobs:
 
     steps:
 
-      # 1. Wake Render instance with retry
       - name: Wake Render (retry up to 5 times)
         run: |
           for i in {1..5}; do
@@ -29,14 +27,12 @@ jobs:
             sleep 5
           done
 
-      # 2. Wait for cold start to finish
-      - name: Wait for Render cold start (2 minutes)
+      - name: Wait for cold start (2 minutes)
         run: |
-          echo "Waiting 120 seconds for Render to warm up..."
+          echo "Waiting 120 seconds for Render warm-up..."
           sleep 120
 
-      # 3. Call /run endpoint ONCE ONLY (NO RETRIES → avoids duplicate tweets)
-      - name: Call /run endpoint (one-time execution)
+      - name: Call /run endpoint (ONE TIME ONLY)
         run: |
-          echo "Triggering tweet..."
+          echo "Calling /run to tweet..."
           curl -s "https://quebot-lg0y.onrender.com/run"
