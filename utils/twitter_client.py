@@ -13,14 +13,52 @@ def get_client():
 def tweet(text):
     try:
         client = get_client()
-        response = client.create_tweet(text=text)
+        client.create_tweet(text=text)
         return True
     except Exception:
         return False
-        
+
+
+# ---------- NEW IMAGE UPLOAD SUPPORT ----------
+# Tweepy v2 client does NOT upload media directly
+# We need the old v1.1 API for the media upload step.
+
+def get_api_v1():
+    auth = tweepy.OAuth1UserHandler(
+        os.getenv("X_API_KEY_TW"),
+        os.getenv("X_API_SECRET"),
+        os.getenv("X_ACCESS_TOKEN"),
+        os.getenv("X_ACCESS_SECRET"),
+    )
+    return tweepy.API(auth)
+
+
+def tweet_image(image_path, caption=""):
+    """
+    Uploads image using Twitter API v1.1, then posts tweet using v2.
+    Returns True/False.
+    """
+    try:
+        api_v1 = get_api_v1()
+        client_v2 = get_client()
+
+        # upload image to v1
+        media = api_v1.media_upload(image_path)
+        media_id = media.media_id_string
+
+        # create tweet with media in v2
+        client_v2.create_tweet(text=caption, media_ids=[media_id])
+        return True
+
+    except Exception:
+        return False
+# ------------------------------------------------
+
+
 def test_connection():
     return {"status": "OK"}
-               
+
+
 def test_twitter():
     result = {
         "auth_ok": False,
@@ -70,4 +108,3 @@ def test_twitter():
         result["raw_error"] = str(e)
         result["error_type"] = type(e).__name__
         return result
-
