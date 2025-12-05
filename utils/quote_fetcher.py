@@ -19,7 +19,6 @@ def fetch_quote(max_retries=3):
     """
     for attempt in range(max_retries):
         try:
-            # pick 1-2 categories to improve relevance
             cats = ",".join(random.sample(CATEGORIES, k=random.choice([1,2])))
             url = f"https://api.api-ninjas.com/v2/quotes?categories={cats}"
             headers = {"X-Api-Key": API_KEY}
@@ -29,17 +28,41 @@ def fetch_quote(max_retries=3):
             if not data:
                 time.sleep(1)
                 continue
+
             item = data[0]
             quote_text = item.get("quote", "").strip()
             author = item.get("author", "") or ""
             categories = item.get("categories", []) or (cats.split(",") if cats else [])
 
             full = f"{quote_text} — {author}" if author else quote_text
-            # skip duplicates
+
             if not_used_before(full):
                 return {"quote": quote_text, "author": author, "categories": categories}
-            # else try again to get non-duplicate
+
             time.sleep(0.5)
+
         except Exception:
             time.sleep(1)
+
     return None
+
+
+def fetch_image(category="wildlife", output_name="quote_image.jpg"):
+    """
+    Downloads a random image from API Ninjas and saves it as file.
+    Returns local file path or None on failure.
+    """
+    try:
+        url = f"https://api.api-ninjas.com/v1/randomimage?category={category}"
+        headers = {"X-Api-Key": API_KEY}
+
+        res = requests.get(url, headers=headers, timeout=15)
+        res.raise_for_status()
+
+        with open(output_name, "wb") as f:
+            f.write(res.content)
+
+        return output_name
+
+    except Exception:
+        return None
